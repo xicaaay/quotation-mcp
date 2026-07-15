@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking and linting
+.mypy_cache/
+.ruff_cache/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
