@@ -1,6 +1,6 @@
 # Quotation MCP Read
 
-Servidor MCP en Python para consultar el catálogo `dm_products` de PostgreSQL. Esta versión es estrictamente de solo lectura.
+Servidor MCP en Python para consultar el catálogo `dm_products` de PostgreSQL. Esta implementación es de solo lectura y utiliza Streamable HTTP para despliegues remotos.
 
 ## Herramientas expuestas
 
@@ -12,45 +12,74 @@ Servidor MCP en Python para consultar el catálogo `dm_products` de PostgreSQL. 
 - `read_product_detail`: busca por UUID, código o nombre exacto.
 - `read_compare_products`: compara varios productos.
 
-## Instalación
-
-```bash
-uv sync
-```
-
-Si se parte de la versión inicial del proyecto, también puede instalarse con:
-
-```bash
-uv add "psycopg[binary]" pydantic pydantic-settings rapidfuzz
-```
-
-## Configuración
+## Ejecución local
 
 ```bash
 cp .env.example .env
-```
-
-Configura `DATABASE_URL` con la misma base PostgreSQL utilizada por el backend.
-
-Se recomienda crear un usuario PostgreSQL con permisos exclusivamente de lectura. Además, cada conexión del MCP ejecuta `SET TRANSACTION READ ONLY`.
-
-## Ejecución
-
-```bash
+uv sync
 uv run quotation-mcp
 ```
 
-## Pruebas
+Rutas locales:
 
-```bash
-uv add --dev pytest
-uv run pytest
+- MCP: `http://localhost:8000/mcp`
+- Estado: `http://localhost:8000/`
+- Health check: `http://localhost:8000/health`
+
+## Despliegue en Railway
+
+1. Sube el proyecto a GitHub.
+2. En Railway, crea un servicio desde el repositorio.
+3. Configura `DATABASE_URL` en **Variables**.
+4. Genera un dominio público en **Networking**.
+5. Railway construirá el `Dockerfile` y comprobará `/health`.
+
+No es necesario crear manualmente la variable `PORT`; Railway la inyecta durante la ejecución.
+
+La URL remota del MCP tendrá esta forma:
+
+```text
+https://tu-dominio.up.railway.app/mcp
 ```
 
-## Ejemplos de solicitudes
+## Variables
 
-- "Busca algo para redes sociales".
-- "Necesito una web por menos de 700 dólares".
-- "Muéstrame servicios mensuales".
-- "De la búsqueda anterior, solo opciones de desarrollo".
-- "Compara DEV_LANDING_PAGE con DEV_INFO_WEBSITE".
+| Variable | Requerida | Descripción |
+|---|---:|---|
+| `DATABASE_URL` | Sí | Conexión PostgreSQL que contiene `dm_products`. |
+| `HOST` | No | Interfaz de escucha. Por defecto `0.0.0.0`. |
+| `PORT` | No | Puerto HTTP. Railway lo proporciona automáticamente. |
+| `MCP_PATH` | No | Ruta del protocolo MCP. Por defecto `/mcp`. |
+| `MCP_MAX_RESULTS` | No | Máximo de resultados permitidos. Por defecto `50`. |
+| `MCP_DATABASE_CONNECT_TIMEOUT` | No | Timeout de PostgreSQL en segundos. Por defecto `10`. |
+
+## Prueba rápida
+
+Comprueba primero que el despliegue esté activo:
+
+```bash
+curl https://tu-dominio.up.railway.app/health
+```
+
+Para probar las herramientas con un cliente FastMCP:
+
+```python
+import asyncio
+from fastmcp import Client
+
+
+async def main() -> None:
+    async with Client("https://tu-dominio.up.railway.app/mcp") as client:
+        tools = await client.list_tools()
+        print([tool.name for tool in tools])
+
+        result = await client.call_tool("read_health_check", {})
+        print(result)
+
+
+asyncio.run(main())
+```
+
+## Seguridad de base de datos
+
+Se recomienda usar un usuario PostgreSQL con permisos exclusivamente de lectura. Adicionalmente, cada conexión ejecuta `SET TRANSACTION READ ONLY` antes de consultar datos.

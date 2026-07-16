@@ -7,9 +7,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Variables requeridas para ejecutar el servidor de lectura."""
+    """Variables requeridas para ejecutar el servidor MCP."""
 
     database_url: str = Field(alias="DATABASE_URL")
+    host: str = Field(default="0.0.0.0", alias="HOST")
+    port: int = Field(default=8000, alias="PORT", ge=1, le=65535)
+    mcp_path: str = Field(default="/mcp", alias="MCP_PATH")
     max_results: int = Field(default=50, alias="MCP_MAX_RESULTS", ge=1, le=200)
     database_connect_timeout: int = Field(
         default=10,
@@ -24,6 +27,15 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @property
+    def normalized_mcp_path(self) -> str:
+        """Retorna una ruta HTTP válida y sin barra final."""
+
+        path = self.mcp_path.strip() or "/mcp"
+        if not path.startswith("/"):
+            path = f"/{path}"
+        return path.rstrip("/") or "/mcp"
 
 
 @lru_cache(maxsize=1)
